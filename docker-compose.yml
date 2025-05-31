@@ -33,7 +33,7 @@ services:
     depends_on:
       - wordpress
     ports:
-      - "5000:5000"       
+      - "5000:5000"
     volumes:
       - .:/app
     networks:
