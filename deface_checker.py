@@ -6,9 +6,6 @@ import requests
 from bs4 import BeautifulSoup
 import smtplib
 from email.message import EmailMessage
-import joblib
-import requests
-from bs4 import BeautifulSoup
 import re
 from urllib.parse import urlparse, unquote
 
@@ -20,8 +17,8 @@ sender_password = 'dsbn uzne wekb jirb'
 receiver_email = '24550017@gm.uit.edu.vn'
 CHECK_INTERVAL = 60  # giây
 
-model = joblib.load("./dockerImage/model/random_forest_model.pkl")
-vectorizer = joblib.load("./dockerImage/model/tfidf_vectorizer.pkl")
+model = joblib.load("./model/random_forest_model.pkl")
+vectorizer = joblib.load("./model/tfidf_vectorizer.pkl")
 # model = joblib.load("/app/model/random_forest_model.pkl")
 # vectorizer = joblib.load("/app/model/tfidf_vectorizer.pkl")
 
@@ -89,8 +86,6 @@ def preprocess_text(text):
     text = re.sub(r'\s+', ' ', text)  # Remove extra spaces
     return text
 
-
-
 def ensure_https(url):
     # Remove spaces and decode encoded spaces
     url = unquote(url).strip()  # Decode '%20' into actual spaces and remove unnecessary spaces
@@ -100,16 +95,23 @@ def ensure_https(url):
         url = "https://" + url
     return url
 
+def get_links_from_homepage(base_url, valid_url = ''):  # Placeholder for actual links
+    if valid_url == '':
+        valid_url = base_url
 
-def get_links_from_homepage(base_url):
     try:
         resp = requests.get(base_url)
         soup = BeautifulSoup(resp.text, 'html.parser')
         links = set()
+
+        invalid_ext_pattern = re.compile(r'\.(php|png|jpg|jpeg|gif|bmp|svg|html|asp|aspx|exe)(\?|$)', re.IGNORECASE)
+
         for a in soup.find_all('a', href=True):
             href = a['href']
+            href = href.replace(valid_url, base_url)
             if href.startswith(base_url):  # chỉ lấy link nội bộ
-                links.add(href)
+                if not invalid_ext_pattern.search(href):  # bỏ qua các link có đuôi không mong muốn
+                    links.add(href)
         return list(links)
     except Exception as e:
         print(f"Error when fetching links: {e}")
@@ -146,8 +148,10 @@ def main():
     while True:
         site = os.getenv('DEFACEMENT_CHECKED_SITE', "http://localhost:8090")  # Get site URL from environment variable or use default
         check_interval = int(os.getenv('CHECK_INTERVAL', 600))  # Get check interval from environment variable or use default
-        # links = get_links_from_homepage(site)
-        links = ["http://localhost:8090/aula-f75/", "http://localhost:8090/edifier-m4/"]
+        links = get_links_from_homepage(
+            os.getenv('DEFACEMENT_OUTSIDE_DOCKER_CHECKED_SITE', 'http://host.docker.internal:8090/'), 
+            os.getenv('DEFACEMENT_CHECKED_SITE', 'http://localhost:8090/')
+        )
         for link in links:
             print(f"{datetime.datetime.now()} >> Checking link: {link}")
             html_content = download_page(link)

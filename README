@@ -1,0 +1,9 @@
+# Start app
+Run script: docker-compose up --build
+
+# Apply new library
+Run script: pip freeze > requirements.txt
+
+# Run test web deface
+Sh to 'web-defacement-ditector-detector-1': docker exec -it web-defacement-ditector-detector-1 sh
+Run script: python deface_checker.py
