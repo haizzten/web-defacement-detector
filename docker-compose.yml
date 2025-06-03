@@ -28,8 +28,12 @@ services:
     networks:
       default:
 
-  detector:
-    build: .
+  deface-checker:
+    image: deface-checker:latest
+    environment:
+      DEFACEMENT_CHECKED_SITE: ${DEFACEMENT_CHECKED_SITE}
+      THROTTLE_TIME: ${THROTTLE_TIME}
+      CHECKING_INTERVAL: ${CHECKING_INTERVAL}
     depends_on:
       - wordpress
     ports:

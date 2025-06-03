@@ -3,7 +3,8 @@ import os
 import time
 import joblib
 import requests
-from bs4 import BeautifulSoup
+import warnings
+from bs4 import BeautifulSoup, XMLParsedAsHTMLWarning
 import smtplib
 from email.message import EmailMessage
 import re
@@ -15,21 +16,10 @@ smtp_port = 587
 sender_email = 'haizzzten@gmail.com'
 sender_password = 'dsbn uzne wekb jirb'
 receiver_email = '24550017@gm.uit.edu.vn'
-CHECK_INTERVAL = 60  # giây
-
-model = joblib.load("./model/random_forest_model.pkl")
-vectorizer = joblib.load("./model/tfidf_vectorizer.pkl")
-# model = joblib.load("/app/model/random_forest_model.pkl")
-# vectorizer = joblib.load("/app/model/tfidf_vectorizer.pkl")
-
-def download_page(url):
-    try:
-        response = requests.get(url, timeout=10)
-        response.raise_for_status()
-        return response.text
-    except requests.exceptions.RequestException as e:
-        print(f"Error when downloading page {url}: {e}")
-        return None
+model_dir="./model"
+vectorizer_name="tfidf_vectorizer.joblib"
+xgb_model_name="model_xgboost.joblib"
+rf_model_name="model_random_forest.joblib"
 
 # Preprocessing function
 def clean_text(text):
@@ -40,6 +30,7 @@ def clean_text(text):
 
 # Extract text from HTML content
 def extract_text_from_html(html_content):
+    warnings.filterwarnings("ignore", category=XMLParsedAsHTMLWarning)
     soup = BeautifulSoup(html_content, 'html.parser')
 
     # Extract <body>
@@ -109,15 +100,15 @@ def get_links_from_homepage(base_url, valid_url = ''):  # Placeholder for actual
         for a in soup.find_all('a', href=True):
             href = a['href']
             href = href.replace(valid_url, base_url)
-            if href.startswith(base_url):  # chỉ lấy link nội bộ
-                if not invalid_ext_pattern.search(href):  # bỏ qua các link có đuôi không mong muốn
+            if href.startswith(base_url):  # only include internal links
+                if not invalid_ext_pattern.search(href):  # skip links with unwanted extensions
                     links.add(href)
         return list(links)
     except Exception as e:
         print(f"Error when fetching links: {e}")
         return []
 
-# Reload page và save HTML
+# Load page và save HTML
 def download_page(url):
     try:
         print(f"Downloading page: {url}")
@@ -140,47 +131,50 @@ def send_alert(url):
             smtp.starttls()
             smtp.login(sender_email, sender_password)
             smtp.send_message(msg)
-            print(f"Sent alert for {url}")
+            print(f"⚠️ Sent alert for {url}")
     except Exception as e:
         print(f"Error sending email: {e}")
 
+def is_valid_html(link):
+    try:
+        response = requests.head(link, timeout=5, allow_redirects=True)
+        content_type = response.headers.get("Content-Type", "").lower()
+        return "html" in content_type  # chỉ tiếp tục nếu là HTML
+    except:
+        return False  # lỗi thì bỏ qua luôn
+
 def main():
     while True:
-        site = os.getenv('DEFACEMENT_CHECKED_SITE', "http://localhost:8090")  # Get site URL from environment variable or use default
-        check_interval = int(os.getenv('CHECK_INTERVAL', 600))  # Get check interval from environment variable or use default
-        links = get_links_from_homepage(
-            os.getenv('DEFACEMENT_OUTSIDE_DOCKER_CHECKED_SITE', 'http://host.docker.internal:8090/'), 
-            os.getenv('DEFACEMENT_CHECKED_SITE', 'http://localhost:8090/')
-        )
+        # Get check values from environment variable or use default
+        checking_interval = int(os.getenv('CHECKING_INTERVAL', 600))  
+        throttle_time = int(os.getenv('THROTTLE_TIME', 1))
+        base_site = os.getenv('DEFACEMENT_CHECKED_SITE', 'http://localhost:8090/')
+        
+        links = get_links_from_homepage(base_site)
         for link in links:
             print(f"{datetime.datetime.now()} >> Checking link: {link}")
+            if not is_valid_html(link):
+                print(f"\033[33mSkipping {link} (Non-HTML content)\033[0m")
+                continue
             html_content = download_page(link)
             if html_content:
                 body_text = extract_text_from_html(html_content)
                 preprocessed_text = preprocess_text(body_text)
                 
+                vectorizer = joblib.load(os.path.join(model_dir, vectorizer_name))
+                xgb_model = joblib.load(os.path.join(model_dir, xgb_model_name))
+                rf_model = joblib.load(os.path.join(model_dir, rf_model_name))
+                
                 tfidf_vector = vectorizer.transform([preprocessed_text])
-                prediction = model.predict(tfidf_vector)
+                prediction = xgb_model.predict(tfidf_vector) or rf_model.predict(tfidf_vector)
                 
                 if prediction[0] == 1:
+                    print(f"\033[31m{link} is defaced.\033[0m")
                     send_alert(link)
+                    time.sleep(throttle_time) # Throttle to avoid email spamming
                 else:
-                    print(f"{link} is not defaced.")
-        for defaced_link in links:
-            print(f"{datetime.datetime.now()} >> Checking defaced link: {defaced_link}")
-            html_content = download_page(defaced_link)
-            if html_content:
-                body_text = extract_text_from_html(html_content)
-                preprocessed_text = preprocess_text(body_text)
-                
-                tfidf_vector = vectorizer.transform([preprocessed_text])
-                prediction = model.predict(tfidf_vector)
-                
-                if prediction[0] == 1:
-                    send_alert(defaced_link)
-                else:
-                    print(f"{defaced_link} is not defaced.")
-        time.sleep(check_interval)
+                    print(f"\033[32m{link} is safe.\033[0m")
+        time.sleep(checking_interval)
 
 if __name__ == "__main__":
     main()
