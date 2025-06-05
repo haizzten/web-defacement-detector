@@ -38,7 +38,7 @@ deactivate () {
 # unset irrelevant variables
 deactivate nondestructive
 
-VIRTUAL_ENV="D:\Study\Đại Học\HK II\Đảm bảo & an ninh thông tin\Bài tập\cuối kỳ\Dataset-for-Web-Defacement-Detection-main\dockerImage\venv"
+VIRTUAL_ENV="D:\Study\Machine learning\web-defacement\dockerImage\venv"
 export VIRTUAL_ENV
 
 _OLD_VIRTUAL_PATH="$PATH"

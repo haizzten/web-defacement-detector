@@ -1,0 +1,17 @@
+- [x] Update file doc tấn công về template ( Huy - 8/6 done)
+- [ ] Cập nhật general workflow(Slide & Doc) (Huy - 27/05)
+- [ ] Cập nhật Model defect workflow (Slide & Doc) (Huy - 27/05)
+- [ ] Demo:
+    - Dựng web wordpress (done)
+    - Tấn công bằng API attract (done)
+    - Tấn công bằng pp template & plugin (done)
+    - Dựng WDDS(web defactment detector system)
+        - train 1 model (done)
+        - tích hợp vào app WP
+            - gửi mail (done)
+            - lấy tất cả đường link WP (todo - Bình)
+        - build docker image (todo)
+            - từ file `.py` -> code file `dockerfile`
+            - update file `docker-compose.yml`
+        - build docker compose để chạy cùng app WP (todo)
+        - train model thứ 2 (todo - Huy)
