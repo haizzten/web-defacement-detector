@@ -16,7 +16,7 @@ smtp_server = 'smtp.gmail.com'
 smtp_port = 587
 sender_email = 'haizzzten@gmail.com'
 sender_password = 'dsbn uzne wekb jirb'
-receiver_email = '24550017@gm.uit.edu.vn'
+receiver_email = '24550022@gm.uit.edu.vn'
 model_dir="./model"
 vectorizer_name="tfidf_vectorizer.joblib"
 xgb_model_name="model_xgboost.joblib"
@@ -93,6 +93,8 @@ def get_links_from_homepage(base_url, valid_url = ''):  # Placeholder for actual
     if valid_url == '':
         valid_url = base_url
 
+    # print(f"\033[32mLink gotten from base url: {repr(base_url)}\033[0m")
+
     try:
         resp = requests.get(base_url, allow_redirects=False)
         soup = BeautifulSoup(resp.text, 'html.parser')
@@ -102,8 +104,9 @@ def get_links_from_homepage(base_url, valid_url = ''):  # Placeholder for actual
         for a in soup.find_all('a', href=True):
             print(f"Found link >> {a} from {base_url}")
             href = a['href']
+            # print(f"\033[32mLink gotten href: {repr(href)}\033[0m")
             # href = href.replace(valid_url, base_url)
-            href = href.replace("http://127.0.0.1", base_url.rstrip('/'))
+            href = href.replace("http://localhost", base_url.rstrip('/'))
             if href.startswith(base_url):  # only include internal links
                 if not invalid_ext_pattern.search(href):  # skip links with unwanted extensions
                     links.add(href)
